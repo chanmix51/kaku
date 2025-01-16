@@ -1,0 +1,115 @@
+openapi: 3.0.0
+info:
+  title: OpenMind API
+  version: 1.0.0
+paths:
+  /project/{project_id}/note:
+    post:
+      summary: Create a new note
+      operationId: createNote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imported_at:
+                  type: string
+                  format: date-time
+                scribe_id:
+                  type: string
+                  format: uuid
+                content:
+                  type: string
+              required:
+                - imported_at
+                - scribe_id
+                - content
+      responses:
+        '201':
+          description: Note created successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Project not found
+  /project/{project_id}/notes:
+    get:
+      summary: Fetch all notes by project ID
+      operationId: fetchNotesByProject
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A list of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    imported_at:
+                      type: string
+                      format: date-time
+                    scribe_id:
+                      type: integer
+                    project_id:
+                      type: integer
+                    content:
+                      type: string
+        '404':
+          description: Project not found
+  /notes/{note_id}:
+    get:
+      summary: Fetch a note by its ID
+      operationId: fetchNoteById
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A note
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  imported_at:
+                    type: string
+                    format: date-time
+                  scribe_id:
+                    type: integer
+                  project_id:
+                    type: integer
+                  content:
+                    type: string
+        '404':
+          description: Note not found
+components:
+  schemas:
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+        imported_at:
+          type: string
+          format: date-time
+        scribe_id:
+          type: integer
+        project_id:
+          type: integer
+        content:
+          type: string
