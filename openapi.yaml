@@ -12,20 +12,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                imported_at:
-                  type: string
-                  format: date-time
-                scribe_id:
-                  type: string
-                  format: uuid
-                content:
-                  type: string
-              required:
-                - imported_at
-                - scribe_id
-                - content
+              $ref: '#/components/schemas/CreateNoteCommand'
       responses:
         '201':
           description: Note created successfully
@@ -51,19 +38,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    imported_at:
-                      type: string
-                      format: date-time
-                    scribe_id:
-                      type: integer
-                    project_id:
-                      type: integer
-                    content:
-                      type: string
+                  $ref: '#/components/schemas/Note'
         '404':
           description: Project not found
   /notes/{note_id}:
@@ -82,19 +57,21 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  imported_at:
-                    type: string
-                    format: date-time
-                  scribe_id:
-                    type: integer
-                  project_id:
-                    type: integer
-                  content:
-                    type: string
+                $ref: '#/components/schemas/Note'
+        '404':
+          description: Note not found
+    delete:
+      summary: Scratch a note by its ID
+      operationId: scratchNote
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Note scratched successfully
         '404':
           description: Note not found
 components:
@@ -113,3 +90,18 @@ components:
           type: integer
         content:
           type: string
+    CreateNoteCommand:
+      type: object
+      properties:
+        imported_at:
+          type: string
+          format: date-time
+        scribe_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+      required:
+        - imported_at
+        - scribe_id
+        - content

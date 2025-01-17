@@ -1,4 +1,4 @@
-use axum::extract::Path;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
@@ -6,43 +6,59 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use chrono::DateTime;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize, Serialize)]
-struct CreateNoteCommand {
-    id: Option<i32>,
-    imported_at: String,
+use crate::modele::CreateNoteCommand;
+use crate::service::ThoughtService;
+
+#[derive(Deserialize)]
+struct CreateNoteRequest {
+    imported_at: DateTime<chrono::Utc>,
     scribe_id: Uuid,
-    project_id: Option<i32>,
     content: String,
 }
 
 /// ApiApp is an actor that represents the API application.
-pub struct ApiApp;
+pub struct ApiApp {
+    thought_service: Arc<ThoughtService>,
+}
 
 impl ApiApp {
-    /// Create a new instance of the API application.
-    pub fn new() -> Self {
-        Self
+    /// Create a new API application.
+    pub fn new(thought_service: Arc<ThoughtService>) -> Self {
+        Self { thought_service }
     }
 
     /// Get the router for the API application.
     pub fn router(&self) -> Router {
         Router::new()
             .route("/project/{project_id}/note", post(create_note))
-            .route("/project/{project_id}/notes", get(fetch_notes_by_project))
-            .route(
-                "/project/{project_id}/note/{note_id}",
-                get(fetch_note_by_id),
-            )
+            .with_state(self.thought_service.clone())
     }
 }
 
-async fn create_note(Json(payload): Json<CreateNoteCommand>) -> impl IntoResponse {
-    // Here you would add your logic to create a note
-    // For now, we just return a 201 status code
-    (StatusCode::CREATED, Json(payload))
+/// Create a new note
+async fn create_note(
+    State(service): State<Arc<ThoughtService>>,
+    Path(project_id): Path<Uuid>,
+    Json(payload): Json<CreateNoteRequest>,
+) -> impl IntoResponse {
+    let command = CreateNoteCommand {
+        project_id,
+        imported_at: payload.imported_at,
+        scribe_id: payload.scribe_id,
+        content: payload.content,
+    };
+
+    let note = service.create_note(command).await;
+
+    match note {
+        Ok(note) => (StatusCode::CREATED, Json(())),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
+    }
 }
 
 async fn fetch_notes_by_project(Path(project_id): Path<Uuid>) -> impl IntoResponse {

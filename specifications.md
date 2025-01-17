@@ -127,6 +127,18 @@ Validation:
 
 Execution: Insert a new note in the notes book.
 
+### Note discard
+
+Command: ScratchNoteCommand
+
+Attributes:
+- note_id: integer
+
+Validation:
+- Ensure `note_id` is a valid integer and references an existing note.
+
+Execution: Remove the note from the notes book.
+
 ## Queries
 
 ### Notes

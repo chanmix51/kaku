@@ -15,5 +15,8 @@ pub mod adapter;
 /// Modele module.
 pub mod modele;
 
+/// Service module.
+pub mod service;
+
 /// Result type used in the application.
 pub type Result<T> = anyhow::Result<T>;
