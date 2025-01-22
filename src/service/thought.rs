@@ -3,7 +3,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::adapter::NoteBook;
-use crate::modele::{CreateNoteCommand, Note};
+use crate::models::{CreateNoteCommand, Note};
 use crate::Result;
 
 /// Thought service

@@ -12,8 +12,8 @@ pub mod actor;
 /// Adapter module.
 pub mod adapter;
 
-/// Modele module.
-pub mod modele;
+/// Models module.
+pub mod models;
 
 /// Service module.
 pub mod service;

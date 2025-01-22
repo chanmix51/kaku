@@ -8,7 +8,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::modele::CreateNoteCommand;
+use crate::models::CreateNoteCommand;
 use crate::service::ThoughtService;
 
 /// Request payload for creating a new note.
