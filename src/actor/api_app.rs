@@ -64,15 +64,7 @@ async fn create_note(
     let note = service.create_note(command).await;
 
     match note {
-        Ok(note) => (StatusCode::CREATED, Json(())),
+        Ok(_) => (StatusCode::CREATED, Json(())),
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
     }
-}
-
-async fn fetch_notes_by_project(Path(project_id): Path<Uuid>) -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, Json(()))
-}
-
-async fn fetch_note_by_id(Path(note_id): Path<i32>) -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, Json(()))
 }
