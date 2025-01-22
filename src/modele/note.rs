@@ -34,7 +34,7 @@ pub struct CreateNoteCommand {
     pub scribe_id: Uuid,
 
     /// The unique identifier of the project that the note is associated with.
-    pub project_id: Uuid,
+    pub project_slug: String,
 
     /// The content of the note.
     pub content: String,

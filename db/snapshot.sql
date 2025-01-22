@@ -44,6 +44,7 @@ create table project (
     universe_id uuid not null references universe(universe_id),
     created_at timestamp not null default now(),
     project_name text not null,
+    slug text not null,
     locked boolean not null default false
 );
 
@@ -69,3 +70,7 @@ create table scribe (
 
 -- create indexes for full text search
 create index idx_thought_content on thought using gin (content gin_trgm_ops);
+
+-- create index for project slug
+create index idx_project_slug on project(slug);
+

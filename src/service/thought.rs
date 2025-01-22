@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use crate::adapter::NoteBook;
 use crate::modele::{CreateNoteCommand, Note};
 use crate::Result;
@@ -17,7 +19,8 @@ impl ThoughtService {
 
     /// Create a new note
     pub async fn create_note(&self, command: CreateNoteCommand) -> Result<Note> {
-        self.note_book.add(command).await
+        let project_id = Uuid::new_v4();
+        self.note_book.add(command, project_id).await
     }
 
     /// Scratch a note
@@ -43,7 +46,7 @@ mod tests {
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
             scribe_id: Uuid::new_v4(),
-            project_id: Uuid::new_v4(),
+            project_slug: String::from("test-project"),
             content: "This is a test note.".to_string(),
         };
 
@@ -60,7 +63,7 @@ mod tests {
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
             scribe_id: Uuid::new_v4(),
-            project_id: Uuid::new_v4(),
+            project_slug: String::from("test-project"),
             content: "This is a test note.".to_string(),
         };
 

@@ -20,7 +20,7 @@ pub enum NoteBookError {
 #[async_trait]
 pub trait NoteBook: Sync + Send {
     /// Adds a new note to the note database.
-    async fn add(&self, command: CreateNoteCommand) -> Result<Note>;
+    async fn add(&self, command: CreateNoteCommand, project_id: Uuid) -> Result<Note>;
 
     /// Gets a note from the note database.
     /// If the note does not exist, an error is returned.
@@ -44,12 +44,12 @@ pub struct InMemoryNoteBook {
 
 #[async_trait]
 impl NoteBook for InMemoryNoteBook {
-    async fn add(&self, command: CreateNoteCommand) -> Result<Note> {
+    async fn add(&self, command: CreateNoteCommand, project_id: Uuid) -> Result<Note> {
         let note = Note {
             note_id: Uuid::new_v4(),
             imported_at: command.imported_at,
             scribe_id: command.scribe_id,
-            project_id: command.project_id,
+            project_id,
             content: command.content,
         };
         let mut notes = self.notes.write().await;
@@ -92,7 +92,7 @@ mod tests {
         CreateNoteCommand {
             imported_at: Utc::now(),
             scribe_id: Uuid::new_v4(),
-            project_id: Uuid::new_v4(),
+            project_slug: "test-project".to_string(),
             content: "This is a test note.".to_string(),
         }
     }
@@ -113,8 +113,8 @@ mod tests {
     async fn test_add_note() {
         let notebook = InMemoryNoteBook::default();
         let command = create_test_note_command();
-        let result = notebook.add(command);
-        let note = result.await.unwrap();
+        let project_id = Uuid::new_v4();
+        let note = notebook.add(command, project_id).await.unwrap();
 
         assert_eq!(note.content, "This is a test note.");
     }
