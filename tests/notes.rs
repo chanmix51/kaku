@@ -1,11 +1,17 @@
 use std::sync::Arc;
 
 use axum_test::TestServer;
-use kaku::{actor::ApiApp, adapter::InMemoryNoteBook};
+use kaku::{
+    actor::ApiApp,
+    adapter::{InMemoryNoteBook, InMemoryProjectBook},
+};
 use serde_json::json;
 
 async fn initialize_test_server() -> TestServer {
-    let service = kaku::service::ThoughtService::new(Arc::new(InMemoryNoteBook::default()));
+    let service = kaku::service::ThoughtService::new(
+        Arc::new(InMemoryNoteBook::default()),
+        Arc::new(InMemoryProjectBook::default()),
+    );
     let app = ApiApp::new(Arc::new(service)).router();
     TestServer::new(app).unwrap()
 }

@@ -57,7 +57,7 @@ pub struct InMemoryProjectBook {
 impl ProjectBook for InMemoryProjectBook {
     async fn create(&self, universe_id: Uuid, project_name: &str) -> Result<Project> {
         let project = Project::create(universe_id, project_name)?;
-        
+
         // Check for duplicate slug
         if self.slugs.read().await.contains_key(&project.slug) {
             return Err(ProjectBookError::DuplicateSlug(project.slug).into());
@@ -65,7 +65,7 @@ impl ProjectBook for InMemoryProjectBook {
 
         let mut projects = self.projects.write().await;
         let mut slugs = self.slugs.write().await;
-        
+
         projects.insert(project.project_id, project.clone());
         slugs.insert(project.slug.clone(), project.project_id);
 
@@ -86,14 +86,14 @@ impl ProjectBook for InMemoryProjectBook {
         let project_id = slugs
             .get(slug)
             .ok_or_else(|| ProjectBookError::ProjectNotFound(Uuid::nil()))?;
-        
+
         self.get(project_id).await
     }
 
     async fn update(&self, project: Project) -> Result<Project> {
         let mut projects = self.projects.write().await;
         let mut slugs = self.slugs.write().await;
-        
+
         // Remove old slug mapping if it exists
         if let Some(existing) = projects.get(&project.project_id) {
             slugs.remove(&existing.slug);
@@ -115,11 +115,11 @@ impl ProjectBook for InMemoryProjectBook {
     async fn delete(&self, project_id: &Uuid) -> Result<Project> {
         let mut projects = self.projects.write().await;
         let mut slugs = self.slugs.write().await;
-        
+
         let project = projects
             .remove(project_id)
-            .ok_or_else(|| ProjectBookError::ProjectNotFound(*project_id))?;
-            
+            .ok_or(ProjectBookError::ProjectNotFound(*project_id))?;
+
         slugs.remove(&project.slug);
 
         Ok(project)
@@ -127,7 +127,7 @@ impl ProjectBook for InMemoryProjectBook {
 
     async fn list_by_universe(&self, universe_id: &Uuid) -> Result<Vec<Project>> {
         let projects = self.projects.read().await;
-        
+
         Ok(projects
             .values()
             .filter(|p| &p.universe_id == universe_id)
@@ -174,7 +174,7 @@ mod tests {
     async fn test_duplicate_slug() {
         let book = InMemoryProjectBook::default();
         let universe_id = Uuid::new_v4();
-        
+
         let _ = book.create(universe_id, "Test Project").await.unwrap();
         let result = book.create(universe_id, "Test Project").await;
 

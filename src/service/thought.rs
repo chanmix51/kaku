@@ -2,19 +2,23 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use crate::adapter::NoteBook;
+use crate::adapter::{NoteBook, ProjectBook};
 use crate::models::{CreateNoteCommand, Note};
 use crate::Result;
 
 /// Thought service
 pub struct ThoughtService {
     note_book: Arc<dyn NoteBook>,
+    project_book: Arc<dyn ProjectBook>,
 }
 
 impl ThoughtService {
     /// Create a new thought service
-    pub fn new(note_book: Arc<dyn NoteBook>) -> Self {
-        Self { note_book }
+    pub fn new(note_book: Arc<dyn NoteBook>, project_book: Arc<dyn ProjectBook>) -> Self {
+        Self {
+            note_book,
+            project_book,
+        }
     }
 
     /// Create a new note
@@ -34,14 +38,17 @@ mod tests {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::adapter::InMemoryNoteBook;
+    use crate::adapter::{InMemoryNoteBook, InMemoryProjectBook};
 
     use super::*;
 
     #[tokio::test]
     async fn test_create_note_success() {
         let note_book = Arc::new(InMemoryNoteBook::default());
-        let thought_service = ThoughtService { note_book };
+        let mut project_book = InMemoryNoteBook::default();
+        
+        let project_book = Arc::new(InMemoryProjectBook::default());
+        let thought_service = ThoughtService::new(note_book, project_book);
 
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
@@ -58,7 +65,8 @@ mod tests {
     #[tokio::test]
     async fn test_scratch_note_success() {
         let note_book = Arc::new(InMemoryNoteBook::default());
-        let thought_service = ThoughtService { note_book };
+        let project_book = Arc::new(InMemoryProjectBook::default());
+        let thought_service = ThoughtService::new(note_book, project_book);
 
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
