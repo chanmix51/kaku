@@ -1,4 +1,6 @@
 use clap::Parser;
+use log::warn;
+use log::{debug, error, info, log_enabled, Level};
 use std::sync::Arc;
 use tokio::signal;
 use tokio::task::JoinHandle;
@@ -22,6 +24,8 @@ pub struct Config {
     pub port: u16,
 }
 
+/// Application
+/// It configures and launches the different actors of the application.
 pub struct Application {
     config: Config,
 }
@@ -31,6 +35,8 @@ impl Application {
         Self { config }
     }
 
+    /// Run the application
+    /// It launches the API server and waits for a signal to stop the application.
     pub async fn run(self) -> Result<()> {
         let note_book = Arc::new(InMemoryNoteBook::default());
         let project_book = Arc::new(InMemoryProjectBook::default());
@@ -41,26 +47,37 @@ impl Application {
             let addr = format!("{}:{}", self.config.host, self.config.port);
             let router = api_app.router();
             let listener = tokio::net::TcpListener::bind(&addr).await?;
+            debug!("Listening on: {addr}");
             axum::serve(listener, router).await?;
 
             Ok(())
         });
 
         tokio::select! {
-            _ = joinhandle => {},
+            r = joinhandle => {r?},
             _ = signal::ctrl_c() => {
-                println!("Received Ctrl+C, shutting down...");
+                warn!("Received Ctrl+C, shutting down...");
+                Ok(())
             },
         }
-
-        Ok(())
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+    info!("Starting Kaku.");
     let config = Config::parse();
     let app = Application::new(config);
 
-    app.run().await
+    match app.run().await {
+        Ok(_) => {
+            info!("Kaku stopped.");
+            Ok(())
+        }
+        Err(e) => {
+            error!("Kaku stopped with error: {e}");
+            Err(e)
+        }
+    }
 }
