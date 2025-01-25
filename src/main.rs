@@ -1,15 +1,11 @@
 use clap::Parser;
 use log::warn;
-use log::{debug, error, info, log_enabled, Level};
-use std::sync::Arc;
+use log::{debug, error, info};
 use tokio::signal;
 use tokio::task::JoinHandle;
 
 use kaku::actor::ApiApp;
-use kaku::adapter::InMemoryNoteBook;
-use kaku::adapter::InMemoryProjectBook;
-use kaku::service::ThoughtService;
-use kaku::Result;
+use kaku::{Container, Result};
 
 /// Application configuration
 #[derive(Parser, Debug, Clone)]
@@ -38,9 +34,8 @@ impl Application {
     /// Run the application
     /// It launches the API server and waits for a signal to stop the application.
     pub async fn run(self) -> Result<()> {
-        let note_book = Arc::new(InMemoryNoteBook::default());
-        let project_book = Arc::new(InMemoryProjectBook::default());
-        let thought_service = Arc::new(ThoughtService::new(note_book, project_book));
+        let mut container = Container::default();
+        let thought_service = container.thought_service()?;
         let api_app = ApiApp::new(thought_service.clone());
 
         let joinhandle: JoinHandle<Result<()>> = tokio::spawn(async move {

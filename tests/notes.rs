@@ -1,18 +1,12 @@
-use std::sync::Arc;
-
+// Tests for the notes endpoint
 use axum_test::TestServer;
-use kaku::{
-    actor::ApiApp,
-    adapter::{InMemoryNoteBook, InMemoryProjectBook},
-};
+use kaku::{actor::ApiApp, Container};
 use serde_json::json;
 
 async fn initialize_test_server() -> TestServer {
-    let service = kaku::service::ThoughtService::new(
-        Arc::new(InMemoryNoteBook::default()),
-        Arc::new(InMemoryProjectBook::default()),
-    );
-    let app = ApiApp::new(Arc::new(service)).router();
+    let mut container = Container::default();
+    let service = container.thought_service().unwrap();
+    let app = ApiApp::new(service).router();
     TestServer::new(app).unwrap()
 }
 

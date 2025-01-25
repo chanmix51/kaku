@@ -1,23 +1,30 @@
 use std::sync::Arc;
 
+use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 
 use crate::adapter::{NoteBook, ProjectBook};
-use crate::models::{CreateNoteCommand, Note};
+use crate::models::{CreateNoteCommand, ModelEvent, Note};
 use crate::Result;
 
 /// Thought service
 pub struct ThoughtService {
     note_book: Arc<dyn NoteBook>,
     project_book: Arc<dyn ProjectBook>,
+    sender: UnboundedSender<ModelEvent>,
 }
 
 impl ThoughtService {
     /// Create a new thought service
-    pub fn new(note_book: Arc<dyn NoteBook>, project_book: Arc<dyn ProjectBook>) -> Self {
+    pub fn new(
+        note_book: Arc<dyn NoteBook>,
+        project_book: Arc<dyn ProjectBook>,
+        sender: UnboundedSender<ModelEvent>,
+    ) -> Self {
         Self {
             note_book,
             project_book,
+            sender,
         }
     }
 
@@ -38,17 +45,14 @@ mod tests {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::adapter::{InMemoryNoteBook, InMemoryProjectBook};
+    use crate::Container;
 
     use super::*;
 
     #[tokio::test]
     async fn test_create_note_success() {
-        let note_book = Arc::new(InMemoryNoteBook::default());
-        let mut project_book = InMemoryNoteBook::default();
-        
-        let project_book = Arc::new(InMemoryProjectBook::default());
-        let thought_service = ThoughtService::new(note_book, project_book);
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
 
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
@@ -64,9 +68,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_scratch_note_success() {
-        let note_book = Arc::new(InMemoryNoteBook::default());
-        let project_book = Arc::new(InMemoryProjectBook::default());
-        let thought_service = ThoughtService::new(note_book, project_book);
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
 
         let command = CreateNoteCommand {
             imported_at: Utc::now(),

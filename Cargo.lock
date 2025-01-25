@@ -774,6 +774,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "synapps",
  "thiserror 2.0.11",
  "tokio",
  "unidecode",
@@ -1161,6 +1162,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "synapps"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a71570627ef5f2c603ea4a48b8af6e3cca93b4a393636843afe981a8891145e"
+dependencies = [
+ "chrono",
+ "serde",
+ "tokio",
 ]
 
 [[package]]

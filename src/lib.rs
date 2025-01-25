@@ -12,6 +12,10 @@ pub mod actor;
 /// Adapter module.
 pub mod adapter;
 
+/// Dependency injection container module.
+mod container;
+pub use container::Container;
+
 /// Models module.
 pub mod models;
 
