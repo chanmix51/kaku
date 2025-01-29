@@ -32,3 +32,28 @@ async fn test_create_note_success() {
 
     assert_eq!(response.status_code(), 201);
 }
+
+#[tokio::test]
+async fn test_create_project_success() {
+    let mut container = Container::default();
+    let client = initialize_test_server(&mut container).await;
+
+    let response = client
+        .post("/project/create")
+        .json(&json!({
+            "universe_id": "123e4567-e89b-12d3-a456-426614174000",
+            "project_name": "New Project"
+        }))
+        .await;
+
+    assert_eq!(response.status_code(), 201);
+
+    // Verify the project was created
+    let project_book = container.project_book().unwrap();
+    let project = project_book
+        .get_by_slug("new-project")
+        .await
+        .unwrap()
+        .expect("there should be a project");
+    assert_eq!(project.project_name, "New Project");
+}

@@ -3,23 +3,27 @@ info:
   title: OpenMind API
   version: 1.0.0
 paths:
-  /project/{project_id}/note:
+  /project/{project_slug}/note:
     post:
       summary: Create a new note
       operationId: createNote
+      parameters:
+        - name: project_slug
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateNoteCommand'
+              $ref: '#/components/schemas/CreateNoteRequest'
       responses:
         '201':
           description: Note created successfully
-        '400':
-          description: Invalid input
-        '404':
-          description: Project not found
+        '500':
+          description: Internal server error
   /project/{project_id}/notes:
     get:
       summary: Fetch all notes by project ID
@@ -74,6 +78,23 @@ paths:
           description: Note scratched successfully
         '404':
           description: Note not found
+  /project/create:
+    post:
+      summary: Create a new project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created successfully
+        '409':
+          description: Project already exists
+        '500':
+          description: Internal server error
 components:
   schemas:
     Note:
@@ -90,7 +111,7 @@ components:
           type: integer
         content:
           type: string
-    CreateNoteCommand:
+    CreateNoteRequest:
       type: object
       properties:
         imported_at:
@@ -105,3 +126,14 @@ components:
         - imported_at
         - scribe_id
         - content
+    CreateProjectRequest:
+      type: object
+      properties:
+        project_name:
+          type: string
+        universe_id:
+          type: string
+          format: uuid
+      required:
+        - project_name
+        - universe_id

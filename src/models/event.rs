@@ -1,7 +1,7 @@
 use synapps::Event;
 use uuid::Uuid;
 
-use super::NoteChangeKind;
+use super::{NoteChangeKind, ProjectChangeKind};
 
 /// Type of model
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,7 +20,16 @@ pub enum ModelKind {
     },
 
     /// a project model
-    Project,
+    Project {
+        /// project identifier
+        project_id: Uuid,
+
+        /// Organization identifier
+        universe_id: Uuid,
+
+        /// change kind
+        change_kind: ProjectChangeKind,
+    },
 }
 /// Model event structure
 /// This sprays model changes to all actors.

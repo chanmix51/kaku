@@ -5,7 +5,10 @@ use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 
 use crate::adapter::{NoteBook, ProjectBook};
-use crate::models::{CreateNoteCommand, ModelEvent, ModelKind, Note, NoteChangeKind};
+use crate::models::{
+    CreateNoteCommand, CreateProjectCommand, ModelEvent, ModelKind, Note, NoteChangeKind, Project,
+    ProjectChangeKind,
+};
 use crate::Result;
 
 /// ThoughtServiceError
@@ -19,6 +22,14 @@ pub enum ThoughtServiceError {
     /// Note not found
     #[error("There is no note with noted_id='{0}'.")]
     NoteNotFound(Uuid),
+
+    /// Project already exists
+    #[error("Project with slug '{0}' already exists.")]
+    ProjectAlreadyExists(String),
+
+    /// Universe not found
+    #[error("Universe not found.")]
+    UniverseNotFound,
 }
 
 /// Thought service
@@ -89,6 +100,35 @@ impl ThoughtService {
 
         Ok(note)
     }
+
+    /// Create a Project
+    /// This returns an error if the project already exists.
+    /// This returns an error if the universe does not exist.
+    pub async fn create_project(&self, command: CreateProjectCommand) -> Result<()> {
+        let slug = Project::generate_slug(&command.project_name);
+
+        if self
+            .project_book
+            .get_by_slug(&Project::generate_slug(&slug))
+            .await?
+            .is_some()
+        {
+            return Err(ThoughtServiceError::ProjectAlreadyExists(slug).into());
+        }
+
+        let project = self.project_book.create(command).await?;
+
+        self.sender.send(ModelEvent {
+            model: ModelKind::Project {
+                project_id: project.project_id,
+                universe_id: project.universe_id,
+                change_kind: ProjectChangeKind::Created,
+            },
+            timestamp: chrono::Utc::now(),
+        })?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -96,7 +136,7 @@ mod tests {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::Container;
+    use crate::{models::ProjectChangeKind, Container};
 
     use super::*;
 
@@ -196,5 +236,68 @@ mod tests {
                 change_kind: NoteChangeKind::Scratched,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_create_project_success() {
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
+        let project_book = container.project_book().unwrap();
+        let mut receiver = container.event_publisher_receiver().unwrap();
+        container.destroy();
+
+        let command = CreateProjectCommand {
+            universe_id: Uuid::new_v4(),
+            project_name: "New Project".to_string(),
+        };
+
+        thought_service.create_project(command).await.unwrap();
+
+        let project = project_book
+            .get_by_slug("new-project")
+            .await
+            .unwrap()
+            .expect("there should be a project");
+        assert_eq!(project.project_name, "New Project");
+
+        // check that the event was sent
+        let event = receiver.recv().await.unwrap();
+        assert_eq!(
+            event.model,
+            ModelKind::Project {
+                project_id: project.project_id,
+                universe_id: project.universe_id,
+                change_kind: ProjectChangeKind::Created,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_project_error_project_already_exists() {
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
+        let project_book = container.project_book().unwrap();
+        container.destroy();
+
+        let command = CreateProjectCommand {
+            universe_id: Uuid::new_v4(),
+            project_name: "Existing Project".to_string(),
+        };
+
+        // Create the project first
+        project_book.create(command.clone()).await.unwrap();
+
+        // Try to create the same project again
+        let error = thought_service
+            .create_project(command)
+            .await
+            .unwrap_err()
+            .downcast::<ThoughtServiceError>()
+            .expect("Expected ThoughtServiceError");
+
+        assert!(matches!(
+            error,
+            ThoughtServiceError::ProjectAlreadyExists(_)
+        ));
     }
 }

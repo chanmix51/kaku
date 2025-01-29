@@ -29,6 +29,19 @@ pub struct Project {
     pub locked: bool,
 }
 
+/// Project change kind
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProjectChangeKind {
+    /// Project created
+    Created,
+
+    /// Project locked
+    Locked,
+
+    /// Project unlocked
+    Unlocked,
+}
+
 /// Project Creation Command
 /// This is the command used to create a new project.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,7 +72,8 @@ impl Project {
         Ok(this)
     }
 
-    fn generate_slug(name: &str) -> String {
+    /// Generate a URL-friendly slug from a project name
+    pub fn generate_slug(name: &str) -> String {
         let slug = unidecode(name)
             .trim()
             .to_lowercase()

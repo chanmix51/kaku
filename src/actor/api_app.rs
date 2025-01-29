@@ -9,7 +9,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::models::{CreateNoteCommand, CreateProjectCommand};
-use crate::service::ThoughtService;
+use crate::service::{ThoughtService, ThoughtServiceError};
 
 /// Request payload for creating a new note.
 /// This represents the JSON body that clients should send when creating a note.
@@ -80,6 +80,7 @@ async fn create_note(
     }
 }
 
+/// Create a new project
 async fn create_project(
     State(service): State<Arc<ThoughtService>>,
     Json(payload): Json<CreateProjectRequest>,
@@ -89,11 +90,18 @@ async fn create_project(
         universe_id: payload.universe_id,
     };
 
-    //let project = service.create_project(command).await;
-    let project: Result<(), ()> = Ok(()); // Temporary placeholder
+    let result = service.create_project(command).await;
 
-    match project {
+    match result {
         Ok(_) => (StatusCode::CREATED, Json(())),
+        Err(e)
+            if matches!(
+                e.downcast_ref::<ThoughtServiceError>(),
+                Some(ThoughtServiceError::ProjectAlreadyExists(_))
+            ) =>
+        {
+            (StatusCode::CONFLICT, Json(()))
+        }
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
     }
 }
