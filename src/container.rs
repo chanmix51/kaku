@@ -20,8 +20,12 @@ pub struct Container {
 }
 
 impl Container {
+    /// Destroy the container
+    /// This allows to drop the different Arc instances stored in the container.
+    pub fn destroy(self) {}
+
     /// Get or iniitalize the channels for the event
-    fn event_publisher(
+    pub fn event_publisher(
         &mut self,
     ) -> Result<&(
         UnboundedSender<crate::models::ModelEvent>,

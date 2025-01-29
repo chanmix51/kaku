@@ -1,23 +1,23 @@
 use synapps::Event;
+use uuid::Uuid;
 
-/// Type of model modification
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EventKind {
-    /// a new model was created
-    Create,
-
-    /// a model was updated
-    Update,
-
-    /// a model was deleted
-    Delete,
-}
+use super::NoteChangeKind;
 
 /// Type of model
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModelKind {
     /// a note model
-    Note,
+    Note {
+        /// note identifier
+        note_id: Uuid,
+
+        /// project identifier
+        /// This is the project the note is associated with.
+        project_id: Uuid,
+
+        /// change kind
+        change_kind: NoteChangeKind,
+    },
 
     /// a project model
     Project,
@@ -26,14 +26,8 @@ pub enum ModelKind {
 /// This sprays model changes to all actors.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelEvent {
-    /// type of model modification
-    pub kind: EventKind,
-
     /// type of model
     pub model: ModelKind,
-
-    /// model id
-    pub id: uuid::Uuid,
 
     /// model modification timestamp
     pub timestamp: chrono::DateTime<chrono::Utc>,

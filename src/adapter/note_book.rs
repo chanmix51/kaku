@@ -6,15 +6,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-/// NoteBookError is an error type that is used to represent errors that occur
-/// when interacting with the note database.
-#[derive(Debug, thiserror::Error)]
-pub enum NoteBookError {
-    /// An error that occurs when a note is not found in the note database.
-    #[error("Note not found: UUID='{0}'.")]
-    NoteNotFound(Uuid),
-}
-
 /// NoteBook is a trait that defines the methods that are required to interact
 /// with a note database.
 #[async_trait]
@@ -23,16 +14,19 @@ pub trait NoteBook: Sync + Send {
     async fn add(&self, command: CreateNoteCommand, project_id: Uuid) -> Result<Note>;
 
     /// Gets a note from the note database.
-    /// If the note does not exist, an error is returned.
-    async fn get(&self, note_id: Uuid) -> Result<Note>;
+    /// If the note does not exist, None is returned.
+    /// If the query could not be performed, an Error is raised.
+    async fn get(&self, note_id: Uuid) -> Result<Option<Note>>;
 
     /// Syncs a note in the note database.
+    /// The identifier cannot be updated.
     /// If the note does not exist, an error is returned.
     async fn sync(&self, note: Note) -> Result<Note>;
 
     /// Deletes a note from the note database.
-    /// If the note does not exist, an error is returned.
-    async fn delete(&self, note_id: Uuid) -> Result<Note>;
+    /// If the note does not exist, None is returned.
+    /// If the query could not be performed, an Error is raised.
+    async fn delete(&self, note_id: Uuid) -> Result<Option<Note>>;
 }
 
 /// InMemoryNoteBook is an in-memory implementation of the NoteBook trait.
@@ -58,13 +52,8 @@ impl NoteBook for InMemoryNoteBook {
         Ok(note)
     }
 
-    async fn get(&self, note_id: Uuid) -> Result<Note> {
-        self.notes
-            .read()
-            .await
-            .get(&note_id)
-            .cloned()
-            .ok_or_else(|| NoteBookError::NoteNotFound(note_id).into())
+    async fn get(&self, note_id: Uuid) -> Result<Option<Note>> {
+        Ok(self.notes.read().await.get(&note_id).cloned())
     }
 
     async fn sync(&self, note: Note) -> Result<Note> {
@@ -74,12 +63,8 @@ impl NoteBook for InMemoryNoteBook {
         Ok(note)
     }
 
-    async fn delete(&self, note_id: Uuid) -> Result<Note> {
-        self.notes
-            .write()
-            .await
-            .remove(&note_id)
-            .ok_or_else(|| NoteBookError::NoteNotFound(note_id).into())
+    async fn delete(&self, note_id: Uuid) -> Result<Option<Note>> {
+        Ok(self.notes.write().await.remove(&note_id))
     }
 }
 
@@ -128,7 +113,11 @@ mod tests {
             .write()
             .await
             .insert(note.note_id, note.clone());
-        let fetched_note = notebook.get(note.note_id).await.unwrap();
+        let fetched_note = notebook
+            .get(note.note_id)
+            .await
+            .unwrap()
+            .expect("There must be a note.");
 
         assert_eq!(fetched_note.content, "This is a test note.");
     }
@@ -155,7 +144,11 @@ mod tests {
         let note = create_note();
         let note_id = note.note_id;
         notebook.notes.write().await.insert(note_id, note.clone());
-        let deleted_note = notebook.delete(note_id).await.unwrap();
+        let deleted_note = notebook
+            .delete(note_id)
+            .await
+            .unwrap()
+            .expect("There must be a note.");
 
         assert_eq!(deleted_note.content, "This is a test note.");
         assert!(notebook.notes.read().await.get(&note_id).is_none());

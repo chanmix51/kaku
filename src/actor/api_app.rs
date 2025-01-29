@@ -8,7 +8,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::models::CreateNoteCommand;
+use crate::models::{CreateNoteCommand, CreateProjectCommand};
 use crate::service::ThoughtService;
 
 /// Request payload for creating a new note.
@@ -29,6 +29,16 @@ struct CreateNoteRequest {
     pub content: String,
 }
 
+/// Request payload for creating a new project.
+#[derive(Deserialize)]
+struct CreateProjectRequest {
+    /// The name of the project.
+    pub project_name: String,
+
+    /// The universe identifier.
+    pub universe_id: Uuid,
+}
+
 /// ApiApp is an actor that represents the API application.
 pub struct ApiApp {
     thought_service: Arc<ThoughtService>,
@@ -44,6 +54,7 @@ impl ApiApp {
     pub fn router(&self) -> Router {
         Router::new()
             .route("/project/{project_slug}/note", post(create_note))
+            .route("/project/create", post(create_project))
             .with_state(self.thought_service.clone())
     }
 }
@@ -64,6 +75,24 @@ async fn create_note(
     let note = service.create_note(command).await;
 
     match note {
+        Ok(_) => (StatusCode::CREATED, Json(())),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
+    }
+}
+
+async fn create_project(
+    State(service): State<Arc<ThoughtService>>,
+    Json(payload): Json<CreateProjectRequest>,
+) -> impl IntoResponse {
+    let command = CreateProjectCommand {
+        project_name: payload.project_name,
+        universe_id: payload.universe_id,
+    };
+
+    //let project = service.create_project(command).await;
+    let project: Result<(), ()> = Ok(()); // Temporary placeholder
+
+    match project {
         Ok(_) => (StatusCode::CREATED, Json(())),
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
     }

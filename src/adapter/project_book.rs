@@ -1,4 +1,4 @@
-use crate::models::Project;
+use crate::models::{CreateProjectCommand, Project};
 use crate::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -23,23 +23,19 @@ pub enum ProjectBookError {
 #[async_trait]
 pub trait ProjectBook: Sync + Send {
     /// Creates a new project in the project database.
-    async fn create(&self, universe_id: Uuid, project_name: &str) -> Result<Project>;
+    async fn create(&self, command: CreateProjectCommand) -> Result<Project>;
 
     /// Gets a project from the project database by its ID.
-    /// If the project does not exist, an error is returned.
-    async fn get(&self, project_id: &Uuid) -> Result<Project>;
+    async fn get(&self, project_id: &Uuid) -> Result<Option<Project>>;
 
     /// Gets a project from the project database by its slug.
-    /// If the project does not exist, an error is returned.
-    async fn get_by_slug(&self, slug: &str) -> Result<Project>;
+    async fn get_by_slug(&self, slug: &str) -> Result<Option<Project>>;
 
     /// Updates a project in the project database.
-    /// If the project does not exist, an error is returned.
     async fn update(&self, project: Project) -> Result<Project>;
 
     /// Deletes a project from the project database.
-    /// If the project does not exist, an error is returned.
-    async fn delete(&self, project_id: &Uuid) -> Result<Project>;
+    async fn delete(&self, project_id: &Uuid) -> Result<()>;
 
     /// Lists all projects in a universe.
     async fn list_by_universe(&self, universe_id: &Uuid) -> Result<Vec<Project>>;
@@ -55,8 +51,8 @@ pub struct InMemoryProjectBook {
 
 #[async_trait]
 impl ProjectBook for InMemoryProjectBook {
-    async fn create(&self, universe_id: Uuid, project_name: &str) -> Result<Project> {
-        let project = Project::create(universe_id, project_name)?;
+    async fn create(&self, command: CreateProjectCommand) -> Result<Project> {
+        let project = Project::create(command)?;
 
         // Check for duplicate slug
         if self.slugs.read().await.contains_key(&project.slug) {
@@ -72,22 +68,23 @@ impl ProjectBook for InMemoryProjectBook {
         Ok(project)
     }
 
-    async fn get(&self, project_id: &Uuid) -> Result<Project> {
-        self.projects
-            .read()
-            .await
-            .get(project_id)
-            .cloned()
-            .ok_or_else(|| ProjectBookError::ProjectNotFound(*project_id).into())
+    async fn get(&self, project_id: &Uuid) -> Result<Option<Project>> {
+        let project = self.projects.read().await.get(project_id).cloned();
+
+        Ok(project)
     }
 
-    async fn get_by_slug(&self, slug: &str) -> Result<Project> {
-        let slugs = self.slugs.read().await;
-        let project_id = slugs
-            .get(slug)
-            .ok_or_else(|| ProjectBookError::ProjectNotFound(Uuid::nil()))?;
+    async fn get_by_slug(&self, slug: &str) -> Result<Option<Project>> {
+        let project_id = {
+            let slugs = self.slugs.read().await;
+            slugs.get(slug).cloned()
+        };
 
-        self.get(project_id).await
+        if let Some(project_id) = project_id {
+            self.get(&project_id).await
+        } else {
+            Ok(None)
+        }
     }
 
     async fn update(&self, project: Project) -> Result<Project> {
@@ -112,7 +109,7 @@ impl ProjectBook for InMemoryProjectBook {
         Ok(project)
     }
 
-    async fn delete(&self, project_id: &Uuid) -> Result<Project> {
+    async fn delete(&self, project_id: &Uuid) -> Result<()> {
         let mut projects = self.projects.write().await;
         let mut slugs = self.slugs.write().await;
 
@@ -122,7 +119,7 @@ impl ProjectBook for InMemoryProjectBook {
 
         slugs.remove(&project.slug);
 
-        Ok(project)
+        Ok(())
     }
 
     async fn list_by_universe(&self, universe_id: &Uuid) -> Result<Vec<Project>> {
@@ -140,11 +137,19 @@ impl ProjectBook for InMemoryProjectBook {
 mod tests {
     use super::*;
 
+    fn create_project_command(universe_id: Uuid, project_name: &str) -> CreateProjectCommand {
+        CreateProjectCommand {
+            universe_id,
+            project_name: project_name.to_string(),
+        }
+    }
+
     #[tokio::test]
     async fn test_create_project() {
         let book = InMemoryProjectBook::default();
         let universe_id = Uuid::new_v4();
-        let project = book.create(universe_id, "Test Project").await.unwrap();
+        let command = create_project_command(universe_id, "Test Project");
+        let project = book.create(command).await.unwrap();
 
         assert_eq!(project.project_name, "Test Project");
         assert_eq!(project.slug, "test-project");
@@ -154,18 +159,28 @@ mod tests {
     async fn test_get_project() {
         let book = InMemoryProjectBook::default();
         let universe_id = Uuid::new_v4();
-        let created = book.create(universe_id, "Test Project").await.unwrap();
-        let fetched = book.get(&created.project_id).await.unwrap();
+        let command = create_project_command(universe_id, "Test Project");
+        let created = book.create(command).await.unwrap();
+        let fetched = book
+            .get(&created.project_id)
+            .await
+            .unwrap()
+            .expect("There should be a project");
 
-        assert_eq!(fetched.project_name, "Test Project");
+        assert_eq!(&fetched.project_name, "Test Project");
     }
 
     #[tokio::test]
     async fn test_get_by_slug() {
         let book = InMemoryProjectBook::default();
         let universe_id = Uuid::new_v4();
-        let created = book.create(universe_id, "Test Project").await.unwrap();
-        let fetched = book.get_by_slug("test-project").await.unwrap();
+        let command = create_project_command(universe_id, "Test Project");
+        let created = book.create(command).await.unwrap();
+        let fetched = book
+            .get_by_slug("test-project")
+            .await
+            .unwrap()
+            .expect("There should be a project.");
 
         assert_eq!(fetched.project_id, created.project_id);
     }
@@ -175,8 +190,9 @@ mod tests {
         let book = InMemoryProjectBook::default();
         let universe_id = Uuid::new_v4();
 
-        let _ = book.create(universe_id, "Test Project").await.unwrap();
-        let result = book.create(universe_id, "Test Project").await;
+        let command = create_project_command(universe_id, "Test Project");
+        let _ = book.create(command.clone()).await.unwrap();
+        let result = book.create(command).await;
 
         assert!(result.is_err());
     }
@@ -187,9 +203,13 @@ mod tests {
         let universe_id1 = Uuid::new_v4();
         let universe_id2 = Uuid::new_v4();
 
-        let _ = book.create(universe_id1, "Test Project 1").await.unwrap();
-        let _ = book.create(universe_id1, "Test Project 2").await.unwrap();
-        let _ = book.create(universe_id2, "Test Project 3").await.unwrap();
+        let command1 = create_project_command(universe_id1, "Test Project 1");
+        let command2 = create_project_command(universe_id1, "Test Project 2");
+        let command3 = create_project_command(universe_id2, "Test Project 3");
+
+        let _ = book.create(command1).await.unwrap();
+        let _ = book.create(command2).await.unwrap();
+        let _ = book.create(command3).await.unwrap();
 
         let projects = book.list_by_universe(&universe_id1).await.unwrap();
         assert_eq!(projects.len(), 2);

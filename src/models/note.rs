@@ -6,7 +6,7 @@ use uuid::Uuid;
 /// A note is a piece of information that is written by a scribe.
 /// Notes are intended to be short term and are used to capture information.
 /// The note is associated with a project.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Note {
     /// The unique identifier of the note.
     pub note_id: Uuid,
@@ -38,4 +38,14 @@ pub struct CreateNoteCommand {
 
     /// The content of the note.
     pub content: String,
+}
+
+/// Business changes on the Note model
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NoteChangeKind {
+    /// Note created
+    Created,
+
+    /// Note scratched
+    Scratched,
 }

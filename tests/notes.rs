@@ -2,9 +2,9 @@
 use axum_test::TestServer;
 use kaku::{actor::ApiApp, Container};
 use serde_json::json;
+use uuid::Uuid;
 
-async fn initialize_test_server() -> TestServer {
-    let mut container = Container::default();
+async fn initialize_test_server(container: &mut Container) -> TestServer {
     let service = container.thought_service().unwrap();
     let app = ApiApp::new(service).router();
     TestServer::new(app).unwrap()
@@ -12,7 +12,14 @@ async fn initialize_test_server() -> TestServer {
 
 #[tokio::test]
 async fn test_create_note_success() {
-    let client = initialize_test_server().await;
+    let mut container = Container::default();
+    let project_book = container.project_book().unwrap();
+    let project_command = kaku::models::CreateProjectCommand {
+        universe_id: Uuid::new_v4(),
+        project_name: "Whatever".to_string(),
+    };
+    project_book.create(project_command).await.unwrap();
+    let client = initialize_test_server(&mut container).await;
 
     let response = client
         .post("/project/whatever/note")

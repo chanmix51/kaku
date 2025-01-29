@@ -29,19 +29,30 @@ pub struct Project {
     pub locked: bool,
 }
 
+/// Project Creation Command
+/// This is the command used to create a new project.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CreateProjectCommand {
+    /// The name of the project
+    pub project_name: String,
+
+    /// The universe identifier
+    pub universe_id: Uuid,
+}
+
 impl Project {
     /// Create a new project
-    pub fn create(universe_id: Uuid, project_name: &str) -> Result<Self> {
-        if project_name.trim().is_empty() {
+    pub fn create(command: CreateProjectCommand) -> Result<Self> {
+        if command.project_name.trim().is_empty() {
             return Err(anyhow!("Project name cannot be empty".to_string()));
         }
 
         let this = Self {
             project_id: Uuid::new_v4(),
-            universe_id,
+            universe_id: command.universe_id,
             created_at: Utc::now(),
-            project_name: project_name.trim().to_string(),
-            slug: Self::generate_slug(project_name),
+            project_name: command.project_name.trim().to_string(),
+            slug: Self::generate_slug(&command.project_name),
             locked: false,
         };
 
@@ -70,8 +81,11 @@ mod tests {
 
     #[test]
     fn test_project_creation() {
-        let universe_id = Uuid::new_v4();
-        let result = Project::create(universe_id, "Test Project");
+        let command = CreateProjectCommand {
+            project_name: "Test Project".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let result = Project::create(command);
 
         assert!(result.is_ok());
 
@@ -84,43 +98,62 @@ mod tests {
 
     #[test]
     fn test_invalid_project_name() {
-        let universe_id = Uuid::new_v4();
-        let result = Project::create(universe_id, "  ");
+        let command = CreateProjectCommand {
+            project_name: "  ".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let result = Project::create(command);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_slug_generation() {
-        let universe_id = Uuid::new_v4();
-        let project = Project::create(universe_id, "Test Project 123!@#").unwrap();
+        let command = CreateProjectCommand {
+            project_name: "Test Project 123!@#".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let project = Project::create(command).unwrap();
 
         assert_eq!(project.slug, "test-project-123");
     }
 
     #[test]
     fn test_slug_with_accents() {
-        let universe_id = Uuid::new_v4();
-        let project = Project::create(universe_id, "Ça a déjà où tête pète aïe").unwrap();
+        let command = CreateProjectCommand {
+            project_name: "Ça a déjà où tête pète aïe".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let project = Project::create(command).unwrap();
 
         assert_eq!(project.slug, "ca-a-deja-ou-tete-pete-aie");
     }
 
     #[test]
     fn test_slug_with_emojis() {
-        let universe_id = Uuid::new_v4();
-        let project = Project::create(universe_id, "My 📚 Project 🚀 Test 💫").unwrap();
+        let command = CreateProjectCommand {
+            project_name: "My 📚 Project 🚀 Test 💫".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let project = Project::create(command).unwrap();
 
         assert_eq!(project.slug, "my-project-test");
     }
 
     #[test]
     fn test_slug_with_consecutive_special_chars() {
-        let universe_id = Uuid::new_v4();
-        let project = Project::create(universe_id, "  Test!!!Project@#$%Test").unwrap();
+        let command = CreateProjectCommand {
+            project_name: "  Test!!!Project@#$%Test".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let project = Project::create(command).unwrap();
         assert_eq!(project.slug, "test-project-test");
 
-        let project = Project::create(universe_id, "Test   Project     Test").unwrap();
+        let command = CreateProjectCommand {
+            project_name: "Test   Project     Test".to_string(),
+            universe_id: Uuid::new_v4(),
+        };
+        let project = Project::create(command).unwrap();
         assert_eq!(project.slug, "test-project-test");
     }
 }
