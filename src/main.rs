@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use clap::Parser;
 use log::warn;
 use log::{debug, error, info};
@@ -48,8 +49,12 @@ impl Application {
             Ok(())
         });
 
+        let event_dispatcher = container.event_dispatcher()?;
+        let event_handle = tokio::spawn(async move { event_dispatcher.execute().await });
+
         tokio::select! {
             r = joinhandle => {r?},
+            _ = event_handle => { Err( anyhow!("The event dispatcher has quit."))},
             _ = signal::ctrl_c() => {
                 warn!("Received Ctrl+C, shutting down...");
                 Ok(())

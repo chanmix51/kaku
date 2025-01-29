@@ -1,9 +1,14 @@
 use std::cell::OnceCell;
 use std::sync::Arc;
 
+use synapps::EventMessage;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use crate::Result;
+use crate::{models::ModelEvent, Result};
+
+/// UnboundedEventMessageReceiver
+pub type UnboundedEventMessageReceiver = UnboundedReceiver<EventMessage<ModelEvent>>;
+pub type UnboundedEventMessageSender = UnboundedSender<EventMessage<ModelEvent>>;
 
 /// Dependencies injection container
 /// All dependencies are stored in this container each in a OnceCell.
@@ -12,10 +17,9 @@ pub struct Container {
     note_book: OnceCell<Arc<dyn crate::adapter::NoteBook>>,
     project_book: OnceCell<Arc<dyn crate::adapter::ProjectBook>>,
     thought_service: OnceCell<Arc<crate::service::ThoughtService>>,
-    event_dispatcher: OnceCell<Arc<synapps::EventDispatcher<crate::models::ModelEvent>>>,
     event_publisher: OnceCell<(
-        UnboundedSender<crate::models::ModelEvent>,
-        UnboundedReceiver<crate::models::ModelEvent>,
+        UnboundedSender<EventMessage<ModelEvent>>,
+        UnboundedEventMessageReceiver,
     )>,
 }
 
@@ -27,10 +31,7 @@ impl Container {
     /// Get or iniitalize the channels for the event
     pub fn event_publisher(
         &mut self,
-    ) -> Result<&(
-        UnboundedSender<crate::models::ModelEvent>,
-        UnboundedReceiver<crate::models::ModelEvent>,
-    )> {
+    ) -> Result<&(UnboundedEventMessageSender, UnboundedEventMessageReceiver)> {
         Ok(self
             .event_publisher
             .get_or_init(tokio::sync::mpsc::unbounded_channel))
@@ -38,14 +39,14 @@ impl Container {
 
     /// get the event publisher
     /// it returns only the publisher but stores the couple (sender, receiver) in the container
-    pub fn event_publisher_sender(&mut self) -> Result<UnboundedSender<crate::models::ModelEvent>> {
+    pub fn event_publisher_sender(&mut self) -> Result<UnboundedSender<EventMessage<ModelEvent>>> {
         Ok(self.event_publisher()?.0.clone())
     }
 
     /// get the event receiver for the event dispatcher
     pub fn event_publisher_receiver(
         &mut self,
-    ) -> Result<UnboundedReceiver<crate::models::ModelEvent>> {
+    ) -> Result<UnboundedReceiver<EventMessage<ModelEvent>>> {
         let _ = self.event_publisher()?;
         let receiver = self.event_publisher.take().unwrap().1;
 
@@ -84,5 +85,12 @@ impl Container {
                 ))
             })
             .clone())
+    }
+
+    /// Get the event dispatcher
+    pub fn event_dispatcher(&mut self) -> Result<synapps::EventDispatcher<ModelEvent>> {
+        let receiver = self.event_publisher_receiver()?;
+
+        Ok(synapps::EventDispatcher::new(receiver))
     }
 }

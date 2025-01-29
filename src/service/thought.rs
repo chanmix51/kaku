@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use synapps::EventMessage;
 use thiserror::Error;
 use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
@@ -36,7 +37,7 @@ pub enum ThoughtServiceError {
 pub struct ThoughtService {
     note_book: Arc<dyn NoteBook>,
     project_book: Arc<dyn ProjectBook>,
-    sender: UnboundedSender<ModelEvent>,
+    sender: UnboundedSender<EventMessage<ModelEvent>>,
 }
 
 impl ThoughtService {
@@ -44,7 +45,7 @@ impl ThoughtService {
     pub fn new(
         note_book: Arc<dyn NoteBook>,
         project_book: Arc<dyn ProjectBook>,
-        sender: UnboundedSender<ModelEvent>,
+        sender: UnboundedSender<EventMessage<ModelEvent>>,
     ) -> Self {
         Self {
             note_book,
@@ -67,7 +68,7 @@ impl ThoughtService {
 
         let note = self.note_book.add(command, project.project_id).await?;
 
-        self.sender.send(ModelEvent {
+        self.send_message(ModelEvent {
             model: ModelKind::Note {
                 note_id: note.note_id,
                 project_id: note.project_id,
@@ -89,7 +90,7 @@ impl ThoughtService {
             .await?
             .ok_or(ThoughtServiceError::NoteNotFound(note_id))?;
 
-        self.sender.send(ModelEvent {
+        self.send_message(ModelEvent {
             model: ModelKind::Note {
                 note_id: note.note_id,
                 project_id: note.project_id,
@@ -118,7 +119,7 @@ impl ThoughtService {
 
         let project = self.project_book.create(command).await?;
 
-        self.sender.send(ModelEvent {
+        self.send_message(ModelEvent {
             model: ModelKind::Project {
                 project_id: project.project_id,
                 universe_id: project.universe_id,
@@ -126,6 +127,18 @@ impl ThoughtService {
             },
             timestamp: chrono::Utc::now(),
         })?;
+
+        Ok(())
+    }
+
+    fn send_message(&self, event: ModelEvent) -> Result<()> {
+        let event_message = EventMessage {
+            sender: "thought".to_string(),
+            topic: "model".to_string(),
+            timestamp: chrono::Utc::now(),
+            event,
+        };
+        self.sender.send(event_message)?;
 
         Ok(())
     }
@@ -196,7 +209,7 @@ mod tests {
         // check that the event was sent
         let event = receiver.recv().await.unwrap();
         assert_eq!(
-            event.model,
+            event.event.model,
             ModelKind::Note {
                 note_id: note.note_id,
                 project_id: note.project_id,
@@ -229,7 +242,7 @@ mod tests {
         // check that the event was sent
         let event = receiver.recv().await.unwrap();
         assert_eq!(
-            event.model,
+            event.event.model,
             ModelKind::Note {
                 note_id,
                 project_id: note.project_id,
@@ -263,7 +276,7 @@ mod tests {
         // check that the event was sent
         let event = receiver.recv().await.unwrap();
         assert_eq!(
-            event.model,
+            event.event.model,
             ModelKind::Project {
                 project_id: project.project_id,
                 universe_id: project.universe_id,
