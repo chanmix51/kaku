@@ -7,6 +7,7 @@ use chrono::DateTime;
 use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
+use axum::routing::delete;
 
 use crate::models::{CreateNoteCommand, CreateProjectCommand};
 use crate::service::{ThoughtService, ThoughtServiceError};
@@ -55,6 +56,7 @@ impl ApiApp {
         Router::new()
             .route("/project/{project_slug}/note", post(create_note))
             .route("/project/create", post(create_project))
+            .route("/notes/{note_id}", delete(scratch_note))
             .with_state(self.thought_service.clone())
     }
 }
@@ -101,6 +103,27 @@ async fn create_project(
             ) =>
         {
             (StatusCode::CONFLICT, Json(()))
+        }
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
+    }
+}
+
+/// Scratch a note by its ID
+async fn scratch_note(
+    State(service): State<Arc<ThoughtService>>,
+    Path(note_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let result = service.scratch_note(note_id).await;
+
+    match result {
+        Ok(_) => (StatusCode::NO_CONTENT, Json(())),
+        Err(e)
+            if matches!(
+                e.downcast_ref::<ThoughtServiceError>(),
+                Some(ThoughtServiceError::NoteNotFound(_))
+            ) =>
+        {
+            (StatusCode::NOT_FOUND, Json(()))
         }
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(())),
     }
