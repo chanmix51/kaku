@@ -5,13 +5,15 @@ use serde::{Deserialize, Serialize};
 use unidecode::unidecode;
 use uuid::Uuid;
 
-/// Project
+/// Project Identifier is a type alias for a UUID that represents a project identifier.
+pub type ProjectIdentifier = Uuid;
+
 /// Project represents a workspace in the application.
 /// It regroups Note, Thought, and other related entities.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     /// Unique identifier for the project
-    pub project_id: Uuid,
+    pub project_id: ProjectIdentifier,
 
     /// Reference to the universe this project belongs to
     pub universe_id: Uuid,

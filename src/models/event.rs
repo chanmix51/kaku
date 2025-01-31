@@ -1,7 +1,7 @@
 use synapps::Event;
 use uuid::Uuid;
 
-use super::{NoteChangeKind, ProjectChangeKind};
+use super::{NoteChangeKind, ProjectChangeKind, ThoughtChangeKind};
 
 /// Type of model
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +29,19 @@ pub enum ModelKind {
 
         /// change kind
         change_kind: ProjectChangeKind,
+    },
+
+    /// a thought model
+    Thought {
+        /// thought identifier
+        thought_id: Uuid,
+
+        /// project identifier
+        /// This is the project the thought is associated with.
+        project_id: Uuid,
+
+        /// change kind
+        change_kind: ThoughtChangeKind,
     },
 }
 /// Model event structure

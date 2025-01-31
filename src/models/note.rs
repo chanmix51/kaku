@@ -2,6 +2,9 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// NoteIdentifier is a type alias for a UUID that represents a note identifier.
+pub type NoteIdentifier = Uuid;
+
 /// Note is a domain model that represents a note.
 /// A note is a piece of information that is written by a scribe.
 /// Notes are intended to be short term and are used to capture information.
@@ -9,7 +12,7 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Note {
     /// The unique identifier of the note.
-    pub note_id: Uuid,
+    pub note_id: NoteIdentifier,
 
     /// The date and time the note was imported.
     pub imported_at: DateTime<chrono::Utc>,

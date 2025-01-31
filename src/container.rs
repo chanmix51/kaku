@@ -16,6 +16,7 @@ pub type UnboundedEventMessageSender = UnboundedSender<EventMessage<ModelEvent>>
 pub struct Container {
     note_book: OnceCell<Arc<dyn crate::adapter::NoteBook>>,
     project_book: OnceCell<Arc<dyn crate::adapter::ProjectBook>>,
+    thought_book: OnceCell<Arc<dyn crate::adapter::ThoughtBook>>,
     thought_service: OnceCell<Arc<crate::service::ThoughtService>>,
     event_publisher: OnceCell<(
         UnboundedSender<EventMessage<ModelEvent>>,
@@ -69,10 +70,19 @@ impl Container {
             .clone())
     }
 
+    /// Get the thought book
+    pub fn thought_book(&mut self) -> Result<Arc<dyn crate::adapter::ThoughtBook>> {
+        Ok(self
+            .thought_book
+            .get_or_init(|| Arc::new(crate::adapter::InMemoryThoughtBook::default()))
+            .clone())
+    }
+
     /// Get the thought service
     pub fn thought_service(&mut self) -> Result<Arc<crate::service::ThoughtService>> {
         let note_book = self.note_book()?;
         let project_book = self.project_book()?;
+        let thought_book = self.thought_book()?;
         let sender = self.event_publisher_sender()?;
 
         Ok(self
@@ -81,6 +91,7 @@ impl Container {
                 Arc::new(crate::service::ThoughtService::new(
                     note_book,
                     project_book,
+                    thought_book,
                     sender,
                 ))
             })

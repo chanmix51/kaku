@@ -5,10 +5,10 @@ use thiserror::Error;
 use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 
-use crate::adapter::{NoteBook, ProjectBook};
+use crate::adapter::{NoteBook, ProjectBook, ThoughtBook};
 use crate::models::{
-    CreateNoteCommand, CreateProjectCommand, ModelEvent, ModelKind, Note, NoteChangeKind, Project,
-    ProjectChangeKind,
+    CreateNoteCommand, CreateProjectCommand, CreateThoughtCommand, ModelEvent, ModelKind, Note,
+    NoteChangeKind, Project, ProjectChangeKind, Thought, ThoughtChangeKind,
 };
 use crate::Result;
 
@@ -31,12 +31,17 @@ pub enum ThoughtServiceError {
     /// Universe not found
     #[error("Universe not found.")]
     UniverseNotFound,
+
+    /// Parent thought not found
+    #[error("There is no thought with thought_id='{0}'.")]
+    InvalidParentReference(Uuid),
 }
 
 /// Thought service
 pub struct ThoughtService {
     note_book: Arc<dyn NoteBook>,
     project_book: Arc<dyn ProjectBook>,
+    thought_book: Arc<dyn ThoughtBook>,
     sender: UnboundedSender<EventMessage<ModelEvent>>,
 }
 
@@ -45,11 +50,13 @@ impl ThoughtService {
     pub fn new(
         note_book: Arc<dyn NoteBook>,
         project_book: Arc<dyn ProjectBook>,
+        thought_book: Arc<dyn ThoughtBook>,
         sender: UnboundedSender<EventMessage<ModelEvent>>,
     ) -> Self {
         Self {
             note_book,
             project_book,
+            thought_book,
             sender,
         }
     }
@@ -105,7 +112,7 @@ impl ThoughtService {
     /// Create a Project
     /// This returns an error if the project already exists.
     /// This returns an error if the universe does not exist.
-    pub async fn create_project(&self, command: CreateProjectCommand) -> Result<()> {
+    pub async fn create_project(&self, command: CreateProjectCommand) -> Result<Project> {
         let slug = Project::generate_slug(&command.project_name);
 
         if self
@@ -128,7 +135,39 @@ impl ThoughtService {
             timestamp: chrono::Utc::now(),
         })?;
 
-        Ok(())
+        Ok(project)
+    }
+
+    /// Create a new thought.
+    /// This returns an error if:
+    /// - The project does not exist
+    /// - The parent thought does not exist (if specified)
+    pub async fn create_thought(&self, command: CreateThoughtCommand) -> Result<Thought> {
+        let project = self
+            .project_book
+            .get_by_slug(&command.project_slug)
+            .await?
+            .ok_or_else(|| ThoughtServiceError::ProjectNotFound(command.project_slug.clone()))?;
+
+        // Verify parent exists if specified
+        if let Some(parent_id) = command.parent_id {
+            if self.thought_book.get(parent_id).await?.is_none() {
+                return Err(ThoughtServiceError::InvalidParentReference(parent_id).into());
+            }
+        }
+
+        let thought = self.thought_book.add(command, project.project_id).await?;
+
+        self.send_message(ModelEvent {
+            model: ModelKind::Thought {
+                thought_id: thought.thought_id,
+                project_id: thought.project_id,
+                change_kind: ThoughtChangeKind::Created,
+            },
+            timestamp: chrono::Utc::now(),
+        })?;
+
+        Ok(thought)
     }
 
     fn send_message(&self, event: ModelEvent) -> Result<()> {
@@ -149,7 +188,11 @@ mod tests {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::{models::ProjectChangeKind, Container};
+    use crate::{
+        models::{ProjectChangeKind, ThoughtChangeKind},
+        service::thought,
+        Container,
+    };
 
     use super::*;
 
@@ -311,6 +354,159 @@ mod tests {
         assert!(matches!(
             error,
             ThoughtServiceError::ProjectAlreadyExists(_)
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_create_thought_success() {
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
+        let project_book = container.project_book().unwrap();
+        let mut receiver = container.event_publisher_receiver().unwrap();
+        container.destroy();
+
+        // Create a project first
+        let project_command = CreateProjectCommand {
+            universe_id: Uuid::new_v4(),
+            project_name: "Test Project".to_string(),
+        };
+        let project = project_book.create(project_command).await.unwrap();
+
+        let command = CreateThoughtCommand {
+            imported_at: Utc::now(),
+            parent_id: None,
+            scribe_id: Uuid::new_v4(),
+            project_slug: project.slug,
+            content: "This is a test thought.".to_string(),
+        };
+
+        let thought = thought_service.create_thought(command).await.unwrap();
+        assert_eq!(thought.content, "This is a test thought.");
+        assert_eq!(thought.project_id, project.project_id);
+        assert!(thought.parent_id.is_none());
+
+        // check that the event was sent
+        let event = receiver.recv().await.unwrap();
+        assert_eq!(
+            event.event.model,
+            ModelKind::Thought {
+                thought_id: thought.thought_id,
+                project_id: thought.project_id,
+                change_kind: ThoughtChangeKind::Created,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_thought_with_parent() {
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
+        let project_book = container.project_book().unwrap();
+        let thought_book = container.thought_book().unwrap();
+        let mut receiver = container.event_publisher_receiver().unwrap();
+        container.destroy();
+
+        // Create a project first
+        let project_command = CreateProjectCommand {
+            universe_id: Uuid::new_v4(),
+            project_name: "Test Project".to_string(),
+        };
+        let project = project_book.create(project_command).await.unwrap();
+
+        // Create parent thought
+        let parent_command = CreateThoughtCommand {
+            imported_at: Utc::now(),
+            parent_id: None,
+            scribe_id: Uuid::new_v4(),
+            project_slug: project.slug.clone(),
+            content: "Parent thought".to_string(),
+        };
+        let parent = thought_book
+            .add(parent_command, project.project_id)
+            .await
+            .unwrap();
+
+        // Create child Thought
+        let child_command = CreateThoughtCommand {
+            imported_at: Utc::now(),
+            parent_id: Some(parent.thought_id),
+            scribe_id: Uuid::new_v4(),
+            project_slug: project.slug,
+            content: "Child thought".to_string(),
+        };
+
+        let child = thought_service.create_thought(child_command).await.unwrap();
+        assert_eq!(child.parent_id, Some(parent.thought_id));
+
+        // check that the event was sent
+        let event = receiver.recv().await.unwrap();
+        assert_eq!(
+            event.event.model,
+            ModelKind::Thought {
+                thought_id: child.thought_id,
+                project_id: child.project_id,
+                change_kind: ThoughtChangeKind::Created,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_thought_project_not_exist() {
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
+        container.destroy();
+
+        let command = CreateThoughtCommand {
+            imported_at: Utc::now(),
+            parent_id: None,
+            scribe_id: Uuid::new_v4(),
+            project_slug: "non-existent-project".to_string(),
+            content: "This thought should not be created".to_string(),
+        };
+
+        let error = thought_service
+            .create_thought(command)
+            .await
+            .unwrap_err()
+            .downcast::<ThoughtServiceError>()
+            .expect("Expected ThoughtServiceError");
+
+        assert!(matches!(error, ThoughtServiceError::ProjectNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_create_thought_parent_not_exist() {
+        let mut container = Container::default();
+        let thought_service = container.thought_service().unwrap();
+        let project_book = container.project_book().unwrap();
+        container.destroy();
+
+        // Create a project first
+        let project_command = CreateProjectCommand {
+            universe_id: Uuid::new_v4(),
+            project_name: "Test Project".to_string(),
+        };
+        let project = project_book.create(project_command).await.unwrap();
+
+        let unknown_parent_id = Uuid::new_v4();
+        let command = CreateThoughtCommand {
+            imported_at: Utc::now(),
+            parent_id: Some(unknown_parent_id),
+            scribe_id: Uuid::new_v4(),
+            project_slug: project.slug,
+            content: "This thought should not be created".to_string(),
+        };
+
+        let error = thought_service
+            .create_thought(command)
+            .await
+            .unwrap_err()
+            .downcast::<ThoughtServiceError>()
+            .expect("Expected ThoughtServiceError");
+
+        assert!(matches!(
+            error,
+            ThoughtServiceError::InvalidParentReference(parent_id) if parent_id == unknown_parent_id
         ));
     }
 }
