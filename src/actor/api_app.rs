@@ -23,7 +23,7 @@ struct CreateNoteRequest {
 
     /// The unique identifier of the scribe (user) creating the note.
     /// Format: UUID v4
-    pub scribe_id: Uuid,
+    pub stylo_id: Uuid,
 
     /// The content of the note.
     /// This contains the actual text/information of the note.
@@ -44,7 +44,7 @@ struct CreateProjectRequest {
 #[derive(Deserialize)]
 struct CreateThoughtRequest {
     pub imported_at: DateTime<chrono::Utc>,
-    pub scribe_id: Uuid,
+    pub stylo_id: Uuid,
     pub content: String,
 }
 
@@ -79,7 +79,7 @@ async fn create_note(
     let command = CreateNoteCommand {
         project_slug,
         imported_at: payload.imported_at,
-        scribe_id: payload.scribe_id,
+        stylo_id: payload.stylo_id,
         content: payload.content,
     };
 
@@ -110,7 +110,7 @@ async fn create_thought(
     let command = CreateThoughtCommand {
         project_slug,
         imported_at: payload.imported_at,
-        scribe_id: payload.scribe_id,
+        stylo_id: payload.stylo_id,
         content: payload.content,
         parent_id: None,
     };

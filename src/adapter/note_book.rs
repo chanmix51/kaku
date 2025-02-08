@@ -42,7 +42,7 @@ impl NoteBook for InMemoryNoteBook {
         let note = Note {
             note_id: Uuid::new_v4(),
             imported_at: command.imported_at,
-            scribe_id: command.scribe_id,
+            stylo_id: command.stylo_id,
             project_id,
             content: command.content,
         };
@@ -76,7 +76,7 @@ mod tests {
     fn create_test_note_command() -> CreateNoteCommand {
         CreateNoteCommand {
             imported_at: Utc::now(),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: "test-project".to_string(),
             content: "This is a test note.".to_string(),
         }
@@ -88,7 +88,7 @@ mod tests {
         Note {
             note_id,
             imported_at: Utc::now(),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_id: Uuid::new_v4(),
             content: "This is a test note.".to_string(),
         }

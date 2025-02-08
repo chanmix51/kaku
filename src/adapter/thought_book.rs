@@ -44,7 +44,7 @@ impl ThoughtBook for InMemoryThoughtBook {
             thought_id: Uuid::new_v4(),
             parent_id: command.parent_id,
             imported_at: command.imported_at,
-            scribe_id: command.scribe_id,
+            stylo_id: command.stylo_id,
             project_id,
             content: command.content,
         };
@@ -75,7 +75,7 @@ mod tests {
         CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: None,
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: "test-project".to_string(),
             content: "This is a test thought.".to_string(),
         }
@@ -88,7 +88,7 @@ mod tests {
             thought_id,
             parent_id: None,
             imported_at: Utc::now(),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_id: Uuid::new_v4(),
             content: "This is a test thought.".to_string(),
         }
@@ -161,7 +161,7 @@ mod tests {
         let command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: Some(parent_thought.thought_id),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: "test-project".to_string(),
             content: "This is a child thought.".to_string(),
         };
@@ -180,7 +180,7 @@ mod tests {
         let command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: Some(nonexistent_parent_id),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: "test-project".to_string(),
             content: "This is a child thought.".to_string(),
         };

@@ -25,7 +25,7 @@ async fn test_create_note_success() {
         .post("/project/whatever/note")
         .json(&json!({
             "imported_at": "2023-10-01T12:00:00Z",
-            "scribe_id": "123e4567-e89b-12d3-a456-426614174000",
+            "stylo_id": "123e4567-e89b-12d3-a456-426614174000",
             "content": "This is a test note"
         }))
         .await;
@@ -83,7 +83,7 @@ async fn test_scratch_note_success() {
     // Create a note
     let note_command = kaku::models::CreateNoteCommand {
         imported_at: chrono::Utc::now(),
-        scribe_id: Uuid::new_v4(),
+        stylo_id: Uuid::new_v4(),
         project_slug: project.slug.clone(),
         content: "This is a test note".to_string(),
     };
@@ -117,12 +117,12 @@ async fn test_create_thought_success() {
 
     let client = initialize_test_server(&mut container).await;
 
-    let scribe_id = Uuid::new_v4();
+    let stylo_id = Uuid::new_v4();
     let response = client
         .post("/project/test-project/thought")
         .json(&json!({
             "imported_at": "2023-10-01T12:00:00Z",
-            "scribe_id": scribe_id,
+            "stylo_id": stylo_id,
             "content": "This is a test thought"
         }))
         .await;

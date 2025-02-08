@@ -190,7 +190,6 @@ mod tests {
 
     use crate::{
         models::{ProjectChangeKind, ThoughtChangeKind},
-        service::thought,
         Container,
     };
 
@@ -205,7 +204,7 @@ mod tests {
 
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: String::from("test-project"),
             content: "This is a test note.".to_string(),
         };
@@ -239,7 +238,7 @@ mod tests {
 
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: project.slug,
             content: "This is a test note.".to_string(),
         };
@@ -268,7 +267,7 @@ mod tests {
         let note_book = container.note_book().unwrap();
         let command = CreateNoteCommand {
             imported_at: Utc::now(),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: String::from("test-project"),
             content: "This is a test note.".to_string(),
         };
@@ -375,7 +374,7 @@ mod tests {
         let command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: None,
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: project.slug,
             content: "This is a test thought.".to_string(),
         };
@@ -417,7 +416,7 @@ mod tests {
         let parent_command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: None,
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: project.slug.clone(),
             content: "Parent thought".to_string(),
         };
@@ -430,7 +429,7 @@ mod tests {
         let child_command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: Some(parent.thought_id),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: project.slug,
             content: "Child thought".to_string(),
         };
@@ -459,7 +458,7 @@ mod tests {
         let command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: None,
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: "non-existent-project".to_string(),
             content: "This thought should not be created".to_string(),
         };
@@ -492,7 +491,7 @@ mod tests {
         let command = CreateThoughtCommand {
             imported_at: Utc::now(),
             parent_id: Some(unknown_parent_id),
-            scribe_id: Uuid::new_v4(),
+            stylo_id: Uuid::new_v4(),
             project_slug: project.slug,
             content: "This thought should not be created".to_string(),
         };

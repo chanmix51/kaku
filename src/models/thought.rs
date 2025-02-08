@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub type ThoughtIdentifier = Uuid;
 
 /// Thought is a domain model that represents a thought.
-/// A thought is a piece of information that is written by a scribe.
+/// A thought is a piece of information that is written by a stylo.
 /// Thoughts are intended to be long term and are used to capture information.
 /// The thought is associated with a project.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -20,8 +20,8 @@ pub struct Thought {
     /// The date and time the thought was imported.
     pub imported_at: DateTime<chrono::Utc>,
 
-    /// The unique identifier of the scribe that created the thought.
-    pub scribe_id: Uuid,
+    /// The unique identifier of the stylo that created the thought.
+    pub stylo_id: Uuid,
 
     /// The unique identifier of the project that the thought is associated with.
     pub project_id: Uuid,
@@ -39,8 +39,8 @@ pub struct CreateThoughtCommand {
     /// Eventual parent of the thought
     pub parent_id: Option<ThoughtIdentifier>,
 
-    /// The unique identifier of the scribe that created the thought.
-    pub scribe_id: Uuid,
+    /// The unique identifier of the stylo that created the thought.
+    pub stylo_id: Uuid,
 
     /// The unique identifier of the project that the thought is associated with.
     pub project_slug: String,

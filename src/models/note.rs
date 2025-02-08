@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub type NoteIdentifier = Uuid;
 
 /// Note is a domain model that represents a note.
-/// A note is a piece of information that is written by a scribe.
+/// A note is a piece of information that is written by a stylo.
 /// Notes are intended to be short term and are used to capture information.
 /// The note is associated with a project.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -17,8 +17,8 @@ pub struct Note {
     /// The date and time the note was imported.
     pub imported_at: DateTime<chrono::Utc>,
 
-    /// The unique identifier of the scribe that created the note.
-    pub scribe_id: Uuid,
+    /// The unique identifier of the stylo that created the note.
+    pub stylo_id: Uuid,
 
     /// The unique identifier of the project that the note is associated with.
     pub project_id: Uuid,
@@ -33,8 +33,8 @@ pub struct CreateNoteCommand {
     /// The date and time the note was imported.
     pub imported_at: DateTime<chrono::Utc>,
 
-    /// The unique identifier of the scribe that created the note.
-    pub scribe_id: Uuid,
+    /// The unique identifier of the stylo that created the note.
+    pub stylo_id: Uuid,
 
     /// The unique identifier of the project that the note is associated with.
     pub project_slug: String,
