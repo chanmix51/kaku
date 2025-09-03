@@ -38,7 +38,7 @@ may become more theoretical (ie `life`) with Thoughts and Questions far more
 general.
 
 `Universe`
-A Universe is a group of Projects that all belong to one or several Stylos.
+A Universe is a group of Projects that belongs to an organization.
 
 `AuthenticationToken`
 It belongs to an Organization. It represents a key to access the system and
@@ -102,10 +102,14 @@ There can be linked Thoughts or Questions (not Notes) on a PoI.
  * locked       boolean
  * is_private   boolean
 
+A Project is created by the owner of an organization in its Universe. 
+
 ### Universe
 
  * universe_id      UniverseIdentifier
  * organization_id  OrganizationIdentifier
+
+A universe belongs to an Organization and is created at the same time.
 
 ### Organization
 
@@ -119,7 +123,7 @@ used to sign pretty much everything that is done by the organization.
 
 ### AuthenticationToken
 
- * authentication_token_id  uuid
+ * authentication_token_id  AuthenticationTokenIdentifier
  * organization_id          OrganizationIdentifier
  * created_at               timestamp
  * valid_until              timestamp
@@ -134,13 +138,13 @@ interact with the application in their name.
  * stylo_id                 StyloIdentifier
  * owner_organization_id    OrganizationIdentifier
  * actor_organization_id    OrganizationIdentifier
- * create_at                timestamp
+ * created_at               timestamp
  * display_name             text
  * is_locked                boolean
  * email                    text
 
  From a model perspective, a Stylo is a relation between 2 organizations (or
- one organization with itself). It grants an organization the right to edit notes
+ one organization with itself). It grants an organization the right to edit PoI
  on the behalf of an organization (may be the same). The owner organization may
  assign an email address to a stylo.
 
@@ -151,6 +155,106 @@ interact with the application in their name.
  * permissions  json
 
 Project permission access.
+
+## Event system
+
+The event system goal is to spread model changes to all actors. Every time a change on a model is done, an event is sent that tells what happened to the model and who requested the change. 
+
+ * The event must provide the necessary information to query the last version of the model.
+ * The event must provide the responsibility chain using the identifiers
+ * The event must provide the date of the event.
+
+These informations are shared in a way a checksum can be made of these 3 parts and this checksum can be signed by the actor's private key. 
+
+### Note events
+
+A Note can be:
+
+  * Created
+  * Scratched 
+  * Trashed (when project is destroyed)
+
+The events are published with the following responsibility chain:
+ * stylo_id
+ * owner_organization_id
+ * actor_organization_id
+ * authentication_token_id
+
+### Thought events
+
+A Thought can be:
+
+  * Created
+  * Modified
+  * Disputed
+  * Invalidated
+  * Locked
+  * Unlocked
+  * Trashed (when project is destroyed)
+
+Same responsibility chain as Note.
+
+### Project events
+
+A Project can be:
+
+  * Created
+  * Locked
+  * Unlocked
+  * Hidden
+  * Disclosed
+  * Destroyed
+
+Responsibility chain is:
+
+ * owner_organization_id
+ * authentication_token_id
+
+### Stylo events
+
+A Stylo can be:
+
+  * Granted
+  * Modified
+  * Locked
+  * Unlocked
+  * Revoked
+
+Responsibility chain is:
+
+ * owner_organization_id
+ * actor_organization_id
+ * authentication_token_id
+
+### Organization events
+
+An Organization can be:
+
+  * Created
+  * Modified
+  * Locked
+  * Unlocked
+
+Responsibility chain is:
+
+ * owner_organization_id
+ * authentication_token_id
+
+### AuthenticationToken events
+
+An AuthenticationToken can be:
+
+  * Created
+  * Activated
+  * Modified
+  * Locked
+  * Unlocked
+  * Revoked
+
+Responsibility chain is:
+
+ * owner_organization_id
+ * authentication_token_id
 
 ## Value measurement 
 
@@ -192,7 +296,7 @@ Attributes:
 - note_id: integer
 
 Validation:
-- Ensure `note_id` is a valid integer and references an existing note.
+- Ensure `note_id` is a valid integer and is referencing an existing note.
 
 Execution: Remove the note from the notes book.
 
